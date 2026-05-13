@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 14:20:52 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/11 17:59:07 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/13 15:54:51 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,33 +34,12 @@ void	sim_print(t_coder *self, char *msg, int critical)
 	pthread_mutex_unlock(&self->config->lock_write);
 }
 
-t_coder	*get_neighbor(t_coder *coder, int side)
-{
-	int	nghbr_id;
-	int	nc;
-
-	nghbr_id = 0;
-	nc = coder->config->nbr_coders;
-	if (side == 0)
-		nghbr_id = (coder->id - 2 + nc) % nc;
-	else if (side == 1)
-		nghbr_id = coder->id % nc;
-	return (&coder->config->coders[nghbr_id]);
-}
-
-int	check_sim_status(t_coder *self)
+int	check_sim_status(t_config *config)
 {
 	int	sim_status;
 
-	pthread_mutex_lock(&self->config->lock_sim_status);
-	sim_status = self->config->sim_status;
-	pthread_mutex_unlock(&self->config->lock_sim_status);
-	pthread_mutex_lock(&self->lock_compiled);
-	if (self->compiled >= self->config->compiles_req)
-	{
-		pthread_mutex_unlock(&self->lock_compiled);
-		return (0);
-	}
-	pthread_mutex_unlock(&self->lock_compiled);
+	pthread_mutex_lock(&config->lock_sim_status);
+	sim_status = config->sim_status;
+	pthread_mutex_unlock(&config->lock_sim_status);
 	return (sim_status);
 }

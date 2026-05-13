@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/04 10:33:34 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/11 18:03:10 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/13 18:03:15 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,30 @@
 # include <pthread.h>   // pthread functions
 # include <sys/time.h>  // gettimeofday
 
+//ENUMS
+// Coder state
+typedef enum e_state
+{
+	REQ,
+	COMP,
+	WORK
+} t_state;
+
+// Print critical
+typedef enum e_scheduler
+{
+	EDF,
+	FIFO
+} t_scheduler;
+
+// Print critical
+typedef enum e_print
+{
+	STND,
+	CRIT
+} t_print;
+
+
 // STRUCTS
 typedef struct s_config	t_config;
 typedef struct s_coder	t_coder;
@@ -30,15 +54,18 @@ typedef struct s_dongle
 {
 	pthread_mutex_t	dongle;
 	int				id;
-	long			last_released; // last used timestamp
+	int				in_use;
+	long			last_used; // last used timestamp
 }	t_dongle;
 
 typedef struct s_coder
 {
 	pthread_t		thread;
 	int				id;
+	t_state			state;
 	long			req_time;
-	pthread_mutex_t	lock_req_time;
+	pthread_mutex_t	lock_state;
+	pthread_cond_t	cond_rdy;
 	int				compiled;
 	pthread_mutex_t	lock_compiled;
 	long			last_comp;
@@ -65,6 +92,7 @@ typedef struct s_config
 	pthread_t		monitor; // monitor thread
 	t_dongle		*dongles; // dongles array
 	t_coder			*coders; // coders array
+	t_coder			**prio_map; // coder pointers for ordered priority
 }	t_config;
 
 // Main function
@@ -77,15 +105,16 @@ void	monitor_script(t_config *config);
 void	coder_script(t_coder *self);
 void	cleanup(t_config *config);
 
-// Coder Tool functions
-int		fifo_priority(t_coder *self, int side);
-int		edf_priority(t_coder *self, int side);
-int		dongle_cooldown(t_dongle *dongle, int cooldown);
+// Monitor Tool functions
+int	check_deadlines(t_config *config);
+int	check_compiles(t_config *config);
+int	compare_fifo(t_coder *coder0, t_coder *coder1);
+int	compare_edf(t_coder *coder0, t_coder *coder1);
 
 // Utility functions
 long	get_time(void);
 void	sim_print(t_coder *self, char *msg, int critical);
-t_coder	*get_neighbor(t_coder *coder, int side);
-int		check_sim_status(t_coder *self);
+int		check_sim_status(t_config *config);
+
 
 #endif

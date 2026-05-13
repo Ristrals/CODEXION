@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/05 15:23:57 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/11 17:57:55 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/13 15:34:01 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,11 +55,3 @@ static int	is_valid_scheduler(char *str)
 		return (1);
 	return (0);
 }
-
-// int			number_of_coders;
-// int 			time_to_burnout;
-// int 			time_to_compile;
-// int 			time_to_refactor;
-// int 			number_of_compiles_required;
-// int 			dongle_cooldown;
-// int			fifo_edf;

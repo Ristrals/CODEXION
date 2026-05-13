@@ -15,8 +15,9 @@ SRCS =	$(F_SRC)/main.c \
 		$(F_SRC)/initializer.c \
 		$(F_SRC)/parser.c \
 		$(F_SRC)/monitor.c \
+		$(F_SRC)/monitor_tools.c \
 		$(F_SRC)/coder.c \
-		$(F_SRC)/coder_tools.c \
+		$(F_SRC)/cleanup.c \
 		$(F_SRC)/utils.c \
 
 OBJS = $(SRCS:$(F_SRC)/%.c=$(F_OBJ)/%.o)

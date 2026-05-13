@@ -6,94 +6,125 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 13:39:44 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/11 17:55:13 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/13 18:14:43 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/codexion.h"
 
-static int	check_deadlines(t_config *config);
-static int	check_compiles(t_config *config);
-static int	check_deadline(t_coder *coder);
-static int	check_sim_status_monitor(t_config *config);
+static void	sort_map_priority(t_config *config);
+static void	execute_map_priority(t_config *config);
+static int	compare(t_coder *coder0, t_coder *coder1, int fifo_edf);
+static void	execution(t_config *config, t_coder *coder, int left, int right);
 
 void	monitor_script(t_config *config)
 {
-	while (check_sim_status_monitor(config))
+	int	i;
+
+	i = 0;
+	while (check_sim_status(config))
 	{
 		if (check_deadlines(config) || check_compiles(config))
 		{
 			pthread_mutex_lock(&config->lock_sim_status);
 			config->sim_status = 0;
 			pthread_mutex_unlock(&config->lock_sim_status);
+
+			while (i < config->nbr_coders)
+			{
+				pthread_mutex_lock(&config->coders[i].lock_state);
+				pthread_cond_signal(&config->coders[i].cond_rdy);
+				pthread_mutex_unlock(&config->coders[i].lock_state);
+				i++;
+			}
 			return ;
 		}
-		usleep(1000);
+		sort_map_priority(config);
+		execute_map_priority(config);
+		usleep(50);
 	}
 }
 
-static int	check_deadlines(t_config *config)
-{
-	int		i;
-	long	current_time;
-	long	last_compile;
-
-	i = 0;
-	current_time = get_time();
-	while (i < config->nbr_coders)
-	{
-		pthread_mutex_lock(&config->coders[i].lock_last_comp);
-		last_compile = config->coders[i].last_comp ;
-		if (check_deadline(&config->coders[i]))
-		{
-			sim_print(&config->coders[i], "\033[31m/!\\ BURNOUT\033[0m", 1);
-			pthread_mutex_unlock(&config->coders[i].lock_last_comp);
-			return (1);
-		}
-		pthread_mutex_unlock(&config->coders[i].lock_last_comp);
-		i++;
-	}
-	return (0);
-}
-
-static int	check_compiles(t_config *config)
+static void	sort_map_priority(t_config *config)
 {
 	int	i;
-	int	compiled_reached;
+	int	j;
+	int prio;
+	t_coder	*tmp;
 
 	i = 0;
-	compiled_reached = 0;
-	while (i < config->nbr_coders)
+	while (i < config->nbr_coders - 1)
 	{
-		pthread_mutex_lock(&config->coders[i].lock_compiled);
-		if (config->coders[i].compiled == config->compiles_req)
-			compiled_reached++;
-		pthread_mutex_unlock(&config->coders[i].lock_compiled);
+		prio = i;
+		j = i + 1;
+		while (j < config->nbr_coders)
+		{
+			if (compare(config->prio_map[j], config->prio_map[prio],
+					config->fifo_edf))
+				prio = j;
+			j++;
+		}
+		if (prio != i)
+		{
+			tmp = config->prio_map[i];
+			config->prio_map[i] = config->prio_map[prio];
+			config->prio_map[prio] = tmp;
+		}
 		i++;
 	}
-	if (compiled_reached == config->nbr_coders)
+}
+
+static void	execute_map_priority(t_config *config)
+{
+	int		i;
+	int		nc;
+	int		left;
+	int		right;
+	t_coder	*target;
+
+	i = 0;
+	nc = config->nbr_coders;
+	while (i < nc)
 	{
-		pthread_mutex_lock(&config->lock_write);
-		printf("\033[32mJOB'S DONE\033[0m\n");
-		pthread_mutex_unlock(&config->lock_write);
-		return (1);
+		target = config->prio_map[i];
+		pthread_mutex_lock(&target->lock_state);
+		if (target->state == REQ)
+		{
+			left = target->id - 1;
+			right = (target->id) % nc;
+			execution(config, target, left, right);
+		}
+		pthread_mutex_unlock(&target->lock_state);
+		i++;
 	}
-	return (0);
 }
 
-static int	check_deadline(t_coder *coder)
+static int	compare(t_coder *coder0, t_coder *coder1, int fifo_edf)
 {
-	if (get_time() - coder->last_comp >= coder->config->tt_burnout)
-		return (1);
-	return (0);
+	int	result;
+
+	if (fifo_edf == FIFO)
+		result = compare_fifo(coder0, coder1);
+	else
+		result = compare_edf(coder0, coder1);
+	return (result);
 }
 
-static int	check_sim_status_monitor(t_config *config)
+static void	execution(t_config *config, t_coder *coder, int left, int right)
 {
-	int	sim_status;
+	long long	now;
 
-	pthread_mutex_lock(&config->lock_sim_status);
-	sim_status = config->sim_status;
-	pthread_mutex_unlock(&config->lock_sim_status);
-	return (sim_status);
+	now = get_time();
+	if (!config->dongles[left].in_use
+		&& !config->dongles[right].in_use)
+	{
+		if ((now - config->dongles[left].last_used >= config->dgl_cd)
+				&& (now - config->dongles[right].last_used >= config->dgl_cd))
+		{
+			coder->state = COMP;
+			config->dongles[left].in_use = 1;
+			config->dongles[right].in_use = 1;
+			pthread_cond_signal(&coder->cond_rdy);
+		}
+	}
 }
