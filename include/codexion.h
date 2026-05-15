@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/04 10:33:34 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 09:48:03 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 16:36:18 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,6 @@ typedef struct s_coder
 	t_state			state;
 	long			req_time;
 	pthread_mutex_t	lock_state;
-	pthread_cond_t	cond_rdy;
 	int				compiled;
 	pthread_mutex_t	lock_compiled;
 	long			last_comp;
@@ -88,6 +87,7 @@ typedef struct s_config
 	int				sim_status; // boolean for the simulation's status
 	pthread_mutex_t	lock_sim_status; // mutex for consulting sim_status
 	pthread_mutex_t	lock_write; // mutex to be allowed to write
+	pthread_cond_t	cond_room;
 	pthread_t		monitor; // monitor thread
 	t_dongle		*dongles; // dongles array
 	t_coder			*coders; // coders array

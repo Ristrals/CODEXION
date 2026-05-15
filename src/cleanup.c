@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/07 16:26:54 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 09:59:09 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 16:38:27 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ void	cleanup(t_config *config)
 		free(config->prio_map);
 	pthread_mutex_destroy(&config->lock_write);
 	pthread_mutex_destroy(&config->lock_sim_status);
+	pthread_cond_destroy(&config->cond_room);
 }
 
 static void	cleanup_coders(t_config *config)
@@ -37,7 +38,6 @@ static void	cleanup_coders(t_config *config)
 		pthread_mutex_destroy(&config->coders[i].lock_state);
 		pthread_mutex_destroy(&config->coders[i].lock_compiled);
 		pthread_mutex_destroy(&config->coders[i].lock_last_comp);
-		pthread_cond_destroy(&config->coders[i].cond_rdy);
 		i++;
 	}
 	free(config->coders);

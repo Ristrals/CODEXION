@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/05 17:59:27 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 09:56:08 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 16:37:27 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ int	init_config(t_config *config, char *argv[])
 	config->sim_status = 0;
 	pthread_mutex_init(&config->lock_sim_status, NULL);
 	pthread_mutex_init(&config->lock_write, NULL);
+	pthread_cond_init(&config->cond_room, NULL);
 	if (init_arrays(config))
 		return (1);
 	return (0);
@@ -76,7 +77,6 @@ static t_coder	*init_coders(t_config *config, int nbr_coders)
 		coder_arr[i].state = WORK;
 		coder_arr[i].req_time = 0;
 		pthread_mutex_init(&coder_arr[i].lock_state, NULL);
-		pthread_cond_init(&coder_arr[i].cond_rdy, NULL);
 		coder_arr[i].compiled = 0;
 		pthread_mutex_init(&coder_arr[i].lock_compiled, NULL);
 		coder_arr[i].last_comp = 0;

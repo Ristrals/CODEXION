@@ -114,6 +114,7 @@ typedef struct s_config
   int             sim_status; // boolean for the simulation's status
   pthread_mutex_t lock_sim_status; // mutex for consulting sim_status
   pthread_mutex_t lock_write; // mutex to be allowed to write
+  pthread_cond_t  cond_room; // monitor wake up call for coders
   pthread_t       monitor; // monitor thread
   t_dongle        *dongles; // dongles array
   t_coder         *coders; // coders array
@@ -129,7 +130,6 @@ typedef struct s_coder
   t_state         state; // Coder's state
   long            req_time; // timestamp of the last compile request
   pthread_mutex_t lock_state; // request_time mutex
-  pthread_cond_t  cond_rdy; // request_time mutex
   int             compiled; // amount of compilations done
   pthread_mutex_t lock_compiled; // compiled mutex
   long            last_comp; // timestamp of the last compilation
@@ -241,7 +241,7 @@ List of mutexes/variables used in this project:
 - **(lock_)sim_status**: sim_status can be locked by the monitor to edit the status and signal the end of the simulation.
 - **lock_write**: is the mutex to use by coders or the monitor to display a message in the terminal, preventing all parties to try writting at once.
 - **(lock_)state & req_time**: registers the timestamp of a coder's last request for compilation and its current status, this will allow the monitor to know a coder's status and evaluate his fifo priority.
-- **cond_rdy**: Condition that allows the monitor to wake a coder up when his compilation request has been greenlit.
+- **cond_room**: Condition that allows the monitor to wake coders and let them check if their compilation has been greenlit.
 - **(lock_)compiled**: The amount of compilations done is edited by coders and read by the monitor, this lock is essential to prevent a coder from editing its counter while the monitor is checking all compilation counts.
 - **(lock_)last_comp**: is the lock that helps the monitor decide which coder is closest to its deadline for the edf priority.
 - **dongle**: is the USB device itself, this mutex will be locked by a coder when in use, then unlocked while updating the last_released variable to manage dongle cooldown.

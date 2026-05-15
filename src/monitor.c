@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 13:39:44 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 09:53:44 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 16:37:45 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,21 +21,15 @@ void	monitor_script(t_config *config)
 {
 	int	i;
 
-	i = 0;
 	while (check_sim_status(config))
 	{
+		i = 0;
 		if (check_deadlines(config) || check_compiles(config))
 		{
 			pthread_mutex_lock(&config->lock_sim_status);
 			config->sim_status = 0;
 			pthread_mutex_unlock(&config->lock_sim_status);
-			while (i < config->nbr_coders)
-			{
-				pthread_mutex_lock(&config->coders[i].lock_state);
-				pthread_cond_signal(&config->coders[i].cond_rdy);
-				pthread_mutex_unlock(&config->coders[i].lock_state);
-				i++;
-			}
+			pthread_cond_broadcast(&config->cond_room);
 			return ;
 		}
 		sort_map_priority(config);
@@ -122,7 +116,7 @@ static void	execution(t_config *config, t_coder *coder, int left, int right)
 			coder->state = COMP;
 			config->dongles[left].in_use = 1;
 			config->dongles[right].in_use = 1;
-			pthread_cond_signal(&coder->cond_rdy);
+			pthread_cond_broadcast(&config->cond_room);
 		}
 	}
 }

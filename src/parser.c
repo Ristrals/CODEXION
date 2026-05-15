@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/05 15:23:57 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 15:34:01 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 15:19:54 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,8 @@ int	parser(int argc, char *argv[])
 
 	i = 1;
 	if (argc != 9)
+		return (1);
+	if (atoi(argv[1]) < 2)
 		return (1);
 	while (i < 8)
 	{

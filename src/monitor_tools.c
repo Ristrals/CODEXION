@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 13:24:15 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 13:44:44 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 15:52:09 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ int	check_compiles(t_config *config)
 	while (i < config->nbr_coders)
 	{
 		pthread_mutex_lock(&config->coders[i].lock_compiled);
-		if (config->coders[i].compiled == config->compiles_req)
+		if (config->coders[i].compiled >= config->compiles_req)
 			compiled_reached++;
 		pthread_mutex_unlock(&config->coders[i].lock_compiled);
 		i++;

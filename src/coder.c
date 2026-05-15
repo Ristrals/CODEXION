@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 13:39:54 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 09:48:32 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 16:37:52 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,12 @@ void	coder_script(t_coder *self)
 		self->req_time = get_time();
 		self->state = REQ;
 		while (self->state == REQ && check_sim_status(self->config))
-			pthread_cond_wait(&self->cond_rdy, &self->lock_state);
+			pthread_cond_wait(&self->config->cond_room, &self->lock_state);
+		if (!check_sim_status(self->config))
+		{
+			pthread_mutex_unlock(&self->lock_state);
+			break ;
+		}
 		pthread_mutex_unlock(&self->lock_state);
 		coder_compile(self);
 		usleep(50);
@@ -53,11 +58,11 @@ static void	coder_compile(t_coder *self)
 	usleep(self->config->tt_compile * 1000);
 	self->r_dgl->last_used = get_time();
 	self->l_dgl->last_used = get_time();
+	self->r_dgl->in_use = 0;
+	self->l_dgl->in_use = 0;
 	pthread_mutex_unlock(&self->l_dgl->dongle);
 	pthread_mutex_unlock(&self->r_dgl->dongle);
 	pthread_mutex_lock(&self->lock_state);
-	self->r_dgl->in_use = 0;
-	self->l_dgl->in_use = 0;
 	self->state = WORK;
 	pthread_mutex_unlock(&self->lock_state);
 }
