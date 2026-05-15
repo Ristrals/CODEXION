@@ -6,16 +6,16 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/05 17:59:27 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 18:03:15 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 09:56:08 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/codexion.h"
 
-static int	init_arrays(t_config *config);
+static int		init_arrays(t_config *config);
 static t_dongle	*init_dongles(int nbr_coders);
 static t_coder	*init_coders(t_config *config, int nbr_coders);
-static t_coder **init_prio_map(t_config *config, int nbr_coders);
+static t_coder	**init_prio_map(t_config *config, int nbr_coders);
 
 int	init_config(t_config *config, char *argv[])
 {
@@ -89,10 +89,10 @@ static t_coder	*init_coders(t_config *config, int nbr_coders)
 	return (coder_arr);
 }
 
-static t_coder **init_prio_map(t_config *config,int nbr_coders)
+static t_coder	**init_prio_map(t_config *config, int nbr_coders)
 {
-	int	i;
-	t_coder **coder_ptr_arr;
+	int		i;
+	t_coder	**coder_ptr_arr;
 
 	i = 0;
 	coder_ptr_arr = malloc(sizeof(t_coder *) * nbr_coders);
@@ -103,7 +103,7 @@ static t_coder **init_prio_map(t_config *config,int nbr_coders)
 		coder_ptr_arr[i] = &config->coders[i];
 		i++;
 	}
-	return coder_ptr_arr;
+	return (coder_ptr_arr);
 }
 
 static int	init_arrays(t_config *config)

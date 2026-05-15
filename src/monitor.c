@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 13:39:44 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 18:14:43 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 09:53:44 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,6 @@ void	monitor_script(t_config *config)
 			pthread_mutex_lock(&config->lock_sim_status);
 			config->sim_status = 0;
 			pthread_mutex_unlock(&config->lock_sim_status);
-
 			while (i < config->nbr_coders)
 			{
 				pthread_mutex_lock(&config->coders[i].lock_state);
@@ -47,9 +46,9 @@ void	monitor_script(t_config *config)
 
 static void	sort_map_priority(t_config *config)
 {
-	int	i;
-	int	j;
-	int prio;
+	int		i;
+	int		j;
+	int		prio;
 	t_coder	*tmp;
 
 	i = 0;
@@ -115,11 +114,10 @@ static void	execution(t_config *config, t_coder *coder, int left, int right)
 	long long	now;
 
 	now = get_time();
-	if (!config->dongles[left].in_use
-		&& !config->dongles[right].in_use)
+	if (!config->dongles[left].in_use && !config->dongles[right].in_use)
 	{
-		if ((now - config->dongles[left].last_used >= config->dgl_cd)
-				&& (now - config->dongles[right].last_used >= config->dgl_cd))
+		if ((now - config->dongles[left].last_used >= config->dgl_cd) && (now
+				- config->dongles[right].last_used >= config->dgl_cd))
 		{
 			coder->state = COMP;
 			config->dongles[left].in_use = 1;

@@ -47,8 +47,8 @@ Threads must then display their respective operations while sharing resources un
 -------------------------------------------------------------------------------
 # RESOURCES
 GeekForGeeks: [Thread Management Functions in C](https://www.geeksforgeeks.org/c/thread-functions-in-c-c/) \
-CodeVault: [Short introduction to threads (pthreads)](https://www.youtube.com/watch?v=d9s_d28yJq0)
-
+CodeVault: [Short introduction to threads (pthreads)](https://www.youtube.com/watch?v=d9s_d28yJq0) \
+YouTube : [DINING-PHILOSOPHERS PROBLEM: SIMPLIFIED](https://www.youtube.com/watch?v=VSkvwzqo-Pk)
 
 **AI** has been used for clues, information and code assessment.\
 **NO CODE IN THIS PROJECT WAS COPY/PASTED FROM AI MODELS !**
@@ -83,6 +83,32 @@ This Codexion program implements and uses all authorized libraries in the subjec
 # include <pthread.h>   // pthread functions
 # include <sys/time.h>  // gettimeofday
 ```
+## ENUMS
+Coder state enums
+```c
+typedef enum e_state
+{
+	REQ,
+	COMP,
+	WORK
+}	t_state;
+```
+Scheduler enums
+```c
+typedef enum e_scheduler
+{
+	EDF,
+	FIFO
+}	t_scheduler;
+```
+Sim_print function enums
+```c
+typedef enum e_print
+{
+	STND,
+	CRIT
+}	t_print;
+```
 ## STRUCTURES
 S_Config regroups all variables required for the execution of the program
 ```c
@@ -103,6 +129,7 @@ typedef struct s_config
    pthread_t       monitor; // monitor thread
    t_dongle        *dongles; // dongles array
    t_coder         *coders; // coders array
+   t_coder		    **prio_map; // coder pointers for ordered priority
 }   t_config;
 ```
 S_Coder contains the elements of a coder, including the thread that will be executed.
@@ -111,8 +138,10 @@ typedef struct s_coder
 {  
    pthread_t       thread;
    int             id; // ID that helps retrieving neighbors info
+   t_state         state;
    long            req_time; // timestamp of the last compile request
-   pthread_mutex_t lock_req_time; // request_time mutex
+   pthread_mutex_t lock_state; // request_time mutex
+   pthread_cond_t  cond_rdy; // request_time mutex
    int             compiled; // amount of compilations done
    pthread_mutex_t lock_compiled; // compiled mutex
    long            last_comp; // timestamp of the last compilation
@@ -126,19 +155,16 @@ S_Dongle represents a USB dongle.
 ```c
 typedef struct s_dongle
 {
-   pthread_mutex_t dongle; // mutex that reprents the device
-   int             id;
-   long            last_released; // last used timestamp
+   pthread_mutex_t   dongle; // mutex that reprents the device
+   int               id;
+   int               in_use; // Allow monitor to quickly check dongle condition
+   long              last_released; // last used timestamp
 }   t_dongle;
 ```
 
-
 ## THREADS AND MUTEXES
-
-
 Threads in C are managed by the ***pthread*** library. \
 It supervises the creation and execution of threads and manages the declaration of variables allowing thread entities to communicate with eachothers, ensuring their cohesion.
-
 
 ### pthread_create()
 Threads are created using the *pthread_create()* function. \
@@ -162,75 +188,61 @@ By locking and unlocking these variables, we ensure that threads do not step on 
 ```c
 pthread_mutex_init(&config->lock_sim_status, NULL);
 ```
-
-
 ### pthread_mutex_lock()
 As an example, we cannot let threads use printf() at will, or info displayed in the terminal will be unreadable. \
-To solve this issue, we use a function that **locks** the **lock_write mutex** from s_config before using printf. If the mutex is locked by another thread, it will wait until a lock is possible before proceeding.
+To solve this issue, we use a function that **locks** the **lock_write mutex** from s_config to "protect" the use of printf. \
+If the mutex is locked by another thread, it will wait until a lock is possible before proceeding.
 ```c
 pthread_mutex_lock(&self->config->lock_write);
 printf("\033[36m%ld\033[0m - Coder %d %s\n", time, self->id, msg);
 pthread_mutex_unlock(&self->config->lock_write);
 ```
-
-
-### pthread_mutex_trylock()
-The *ptrhead_mutex_trylock*() function can also be used if we want to try a mutex lock without necessarily pausing the script execution, allowing us to check if the simulation is still running while trying for example.
+### pthread_cond_init()
+pthread_cond_t elements allow a script to be paused to sleep. They're initialized like so:
 ```c
-if (!pthread_mutex_trylock(&self->r_dgl->dongle))
-{
-   [...]
-}
+pthread_cond_init(&coder_arr[i].cond_rdy, NULL);
 ```
-
-### pthread_mutex_destroy()
-Once the program's task is over, mutexes must me deleted to free their allocated memory using *pthread_destroy()*
+### pthread_cond_wait()
+The wait function puts a script to sleep, simultaneously unlocking all locked mutexes for other thread to use if needed.
 ```c
-pthread_mutex_destroy(&config->lock_write);
+pthread_cond_wait(&self->cond_rdy, &self->lock_state);
+```
+### pthread_cond_signal()
+Signal will trigger a condition variable to wake up, relocking its previously locked mutexes to continue the script's execution.
+```c
+pthread_cond_signal(&coder->cond_rdy);
+```
+### pthread_mutex/cond_destroy()
+Once the program's task is over, conditions and mutexes must me deleted to free their allocated memory using *pthread_[...]_destroy()*
+```c
+pthread_mutex_destroy(&config->coders[i].lock_last_comp);
+pthread_cond_destroy(&config->coders[i].cond_rdy);
 ```
 
 ### Blocking cases handled
-To prevent the deadlock scenario: when every coder has one dongle they won't release, resulting in every coders' burnout, we use the pthread_mutex_trylock() function. \
-In this program, a coder will try to lock the first dongle, if it works it then tries to lock the second dongle, but it this second lock fails, it will release the first and retry the entire process once again. \
-This way, no dongles will be held by a coder indefinitely, preventing the deadlock situation.
-A final failsafe, in case deadline(edf) or request(fifo) timestamps are identical, will decide which coder is prioritized based on their ID.
+To prevent a deadlock scenario: coders cannot decide on their own if it is time for compilation or not. Additionally they're unable to communicate with each other, the monitor is thus the only decider in that program.
+
+When the monitor checks if a coder is ready for compilation, it checks if dongles on his sides are available or not through the in_use variable, preventing a deadlock.
+
+For tiebreaking, the monitor will simply give priority to coders that have seniority through the smallest ID.
 ```c
-static void	coder_compile(t_coder *self)
+// Example, for fifo
+int	compare_fifo(t_coder *coder0, t_coder *coder1)
 {
-    // Checks if the simulation's still running
-	while (check_sim_status(self))
-	{
-        // priority check
-		if (coder_ready(self)) 
-		{
-            // first dongle lock attempt
-			if (!pthread_mutex_trylock(&self->l_dgl->dongle))
-			{
-                // second dongle lock attempt
-                sim_print(self, "Has taken his left dongle", 0);
-				if (!pthread_mutex_trylock(&self->r_dgl->dongle))
-				{
-                    //checks dongles cooldown
-                    sim_print(self, "Has taken his right dongle", 0);
-					if (!dongle_cooldown(self->l_dgl, self->config->dgl_cd) &&
-						!dongle_cooldown(self->r_dgl, self->config->dgl_cd))
-					{
-                        //success, we compile, release and return
-						coder_compilation(self);
-						pthread_mutex_unlock(&self->l_dgl->dongle);
-						pthread_mutex_unlock(&self->r_dgl->dongle);
-						return;
-					}
-                    // if it fails we release dongle 2
-					pthread_mutex_unlock(&self->r_dgl->dongle);
-				}
-                // release dongle 1
-				pthread_mutex_unlock(&self->l_dgl->dongle);
-			}
-		}
-        // micro pause to prevent CPU overload and try again
-		usleep(400);
-	}
+	long	time0;
+	long	time1;
+
+	pthread_mutex_lock(&coder0->lock_state);
+	time0 = coder0->req_time;
+	pthread_mutex_unlock(&coder0->lock_state);
+	pthread_mutex_lock(&coder1->lock_state);
+	time1 = coder1->req_time;
+	pthread_mutex_unlock(&coder1->lock_state);
+	if (time0 < time1) 
+		return (1);
+	if (time0 == time1 && coder0->id < coder1->id) // in case of tie
+		return (1);
+	return (0);
 }
 ```
 
@@ -238,64 +250,64 @@ static void	coder_compile(t_coder *self)
 List of mutexes/variables used in this project:
 - **(lock_)sim_status**: sim_status can be locked by the monitor to edit the status and signal the end of the simulation.
 - **lock_write**: is the mutex to use by coders or the monitor to display a message in the terminal, preventing all parties to try writting at once.
-- **(lock_)request_time**: registers the timestamp of a coder's last request for compilation, this will allow the fifo_priority() function to know which coder was the "first in" and give the greenlight to lock a dongle.
+- **(lock_)state & req_time**: registers the timestamp of a coder's last request for compilation and its current status, this will allow the monitor to know a coder's status and evaluate his priority.
+- **cond_rdy**: Condition that allows the monitor to wake a coder up when his compilation request has been greenlit.
 - **(lock_)compiled**: The amount of compilations done is edited by coders and read by the monitor, this lock is essential to prevent a coder from editing its counter while the monitor is checking all compilation counts.
-- **(lock_)last_comp**: is the lock that helps edf_priority() decide which coder is closest to its deadline for dongle acquisition.
+- **(lock_)last_comp**: is the lock that helps the monitor decide which coder is closest to its deadline for dongle acquisition.
 - **dongle**: is the USB device itself, this mutex will be locked by a coder when in use, then unlocked while updating the last_released variable to manage dongle cooldown.
 
 
 ## CODE INFRASTRUCTURE
-- **Makefile**: Makefile command file
+- **Makefile**: Command file
 - **README.md**: Program guide and information
 - **[src]**: Contains all .c files
    - **main.c**: main file
-   ```c
-   int         main(int argc, char *argv[]); // main function
-   static int  start_sim(t_config *config); // triggers simulation's start
-   static void end_sim(t_config *config); // closes threads once the sim ends
-   static void report(t_config *config); // additional report (personal addition)
-   ```
+	```c
+	int			main(int argc, char *argv[]); // main function
+	static int	start_sim(t_config *config); // starts simulation
+	static void	end_sim(t_config *config); // ends simulation
+	static void	report(t_config *config); // optional report
+	```
    - **parser.c**: Checks arguments values
-   ```c
-   int         parser(int argc, char *argv[]);
-   static int  is_valid_number(char *str); // check if positive integers
-   static int  is_valid_scheduler(char *str); //check if "fifo" or "edf"
-   ```
+	```c
+	int			parser(int argc, char *argv[]); // parser
+	static int	is_valid_number(char *str); // check if positive integers
+	static int	is_valid_scheduler(char *str); //check if "fifo" or "edf"
+	```
    - **initializer.c**: Initialize every structures
-   ```c
-   int init_config(t_config *config, char *argv[]); // init config struct
-   static t_dongle *init_dongles(int nbr_coders); // init dongle struct array in config
-   static t_coder  *init_coders(t_config *config, int nbr_coders); // init coder struct array in config
-   void    cleanup(t_config *config); // purge allocated memory and destroys mutexes
-   ```
+	```c
+	int				init_config(t_config *config, char *argv[]); // init config struct
+	static int		init_arrays(t_config *config); // triggers dongles, coders and prio_map inits
+	static t_dongle	*init_dongles(int nbr_coders); // init dongles array
+	static t_coder 	*init_coders(t_config *config, int nbr_coders); // init coders array
+	static t_coder	**init_prio_map(t_config *config, int nbr_coders); // init prio_map array
+	```
    - **monitor.c**: monitor script and tools
-   ```c
-   void        monitor_script(t_config *config); // monitor routine script
-   static int  check_deadlines(t_config *config); // checks all coders deadlines
-   static int  check_compiles(t_config *config); // checks all coders compilation counter
-   static int  check_deadline(t_coder *coder); // check singular coder deadline
-   static int  check_sim_status_monitor(t_config *config); // checks if simulation is still running
-   ```
+	```c
+	void		monitor_script(t_config *config); // monitor routine script
+	static void	sort_map_priority(t_config *config); //sort coders in prio_map
+	static void	execute_map_priority(t_config *config); //greenlight coders compilation request
+	static int	compare(t_coder *coder0, t_coder *coder1, int fifo_edf); // priority check between 2 coders
+	static void	execution(t_config *config, t_coder *coder, int left, int right); // change coder and associated dongles status
+	```
+   - **monitor_tools.c**: coders script's tools
+	```c
+	int	check_deadlines(t_config *config);
+	int	check_compiles(t_config *config);
+	int	compare_fifo(t_coder *coder0, t_coder *coder1)down;
+	int	compare_edf(t_coder *coder0, t_coder *coder1);
+	```
    - **coder.c**: coders routine script
-   ```c
-   void        coder_script(t_coder *self); // coder routine script
-   static void coder_compile(t_coder *self); // try to access mutexes
-   static void coder_compilation(t_coder *self); // compilation
-   static int  coder_ready(t_coder *self); // checks if compilation scheduler conditions are met
-   ```
-   - **coder_tools.c**: coders script's tools
-   ```c
-   int fifo_priority(t_coder *self, int side); // checks priority when fifo
-   int edf_priority(t_coder *self, int side); // checks priority when edf
-   int dongle_cooldown(t_dongle *dongle, int cooldown); // checks dongle cool down
-   ```
+	```c
+	void        coder_script(t_coder *self)
+	static void	coder_compile(t_coder *self);
+	```
    - **utils.c**: utility functions
-   ```c
-   long    get_time(void); // recovers current time in milliseconds
-   void    sim_print(t_coder *self, char* msg, int critical); // print function
-   t_coder *get_neighbor(t_coder *coder, int side); // recover neighbors struct data
-   int     check_sim_status(t_coder *self) // checks if simulation is still running
-   ```
+	```c
+	long	get_time(void)
+	void	sim_print(t_coder *self, char *msg, int critical)
+	int		check_sim_status(t_config *config)
+	```
 - **[include]**
    - **codexion.h**: Contains libraries, structures and non-static function prototypes
 - **[obj]**: Contains object files, can be deleted with the *make clean* command
@@ -303,15 +315,11 @@ List of mutexes/variables used in this project:
 
 
 ## EXECUTION
+Conceptually, a monitor thread will ensure the good execution of the program through a loop, tracking end conditions and supervising coders to make sure they don't step on one another. \
+Coder threads do not communicate with each other, they will simply debug, refactor, sleep untill awaken by the monitor, then compile to repeat the process anew.
 
+When end conditions are met, rather if it's following a burnout or expected compilation count, the monitor will turn the sim_status variable from s_config to 0, and from here, every threads will cease activity and the routine will be considered finished.
 
-Conceptually, every threads will be running a coder script, that debugs, refactors, and if possible, compile then repeat. \
-In parallel, an additional thread, managed by the s_config, will supervise the execution of the program. It will wake up on a regular timer to check if:
-- All coders have the right amount of compilations
-- One of the coder has exceeded its deadline and burnt out
-
-
-When one of those conditions are met, the monitor will turn the sim_status variable from s_config to 0, and from here, every threads will cease activity and the routine will be considered finished. \
 The program will then perform a cleanup, destroying all mutexes and freeing allocated memory, display a report, then shutdown.
 
 
@@ -320,6 +328,7 @@ The program will then perform a cleanup, destroying all mutexes and freeing allo
 
 ## CONCLUSION
 Playing with threads and understand their inner workings was very interesting. \
-The challenge revolved around the way each thread would access key variables, both for reading or editing. \
+The challenge revolved around the way each thread would access key variables, both for reading, editing or waiting. 
+
 The concept of priorities also played an important part of this project, to discern how different scheduling methods dictate the behavior of a multi-thread program was pretty insightful to witness first hand.
 

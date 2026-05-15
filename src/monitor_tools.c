@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 13:24:15 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 14:51:04 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 13:44:44 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,8 @@ int	check_deadlines(t_config *config)
 		pthread_mutex_lock(&config->coders[i].lock_last_comp);
 		last_compile = config->coders[i].last_comp ;
 		pthread_mutex_unlock(&config->coders[i].lock_last_comp);
-		if (current_time - last_compile 
-				>= config->coders[i].config->tt_burnout)
+		if (current_time - last_compile
+			>= config->coders[i].config->tt_burnout)
 		{
 			sim_print(&config->coders[i], "\033[31m/!\\ BURNOUT\033[0m", CRIT);
 			return (1);
@@ -81,18 +81,18 @@ int	compare_fifo(t_coder *coder0, t_coder *coder1)
 
 int	compare_edf(t_coder *coder0, t_coder *coder1)
 {
-	long	time0;
-	long	time1;
+	long	deadline0;
+	long	deadline1;
 
 	pthread_mutex_lock(&coder0->lock_last_comp);
-	time0 = coder0->last_comp;
+	deadline0 = coder0->last_comp + coder0->config->tt_burnout;
 	pthread_mutex_unlock(&coder0->lock_last_comp);
 	pthread_mutex_lock(&coder1->lock_last_comp);
-	time1 = coder1->last_comp;
+	deadline1 = coder1->last_comp + coder1->config->tt_burnout;
 	pthread_mutex_unlock(&coder1->lock_last_comp);
-	if (time0 < time1)
+	if (deadline0 < deadline1)
 		return (1);
-	if (time0 == time1 && coder0->id < coder1->id)
+	if (deadline0 == deadline1 && coder0->id < coder1->id)
 		return (1);
 	return (0);
 }

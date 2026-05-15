@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/04 10:33:34 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 18:03:15 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 09:48:03 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,22 +28,21 @@ typedef enum e_state
 	REQ,
 	COMP,
 	WORK
-} t_state;
+}	t_state;
 
 // Print critical
 typedef enum e_scheduler
 {
 	EDF,
 	FIFO
-} t_scheduler;
+}	t_scheduler;
 
 // Print critical
 typedef enum e_print
 {
 	STND,
 	CRIT
-} t_print;
-
+}	t_print;
 
 // STRUCTS
 typedef struct s_config	t_config;
@@ -106,15 +105,14 @@ void	coder_script(t_coder *self);
 void	cleanup(t_config *config);
 
 // Monitor Tool functions
-int	check_deadlines(t_config *config);
-int	check_compiles(t_config *config);
-int	compare_fifo(t_coder *coder0, t_coder *coder1);
-int	compare_edf(t_coder *coder0, t_coder *coder1);
+int		check_deadlines(t_config *config);
+int		check_compiles(t_config *config);
+int		compare_fifo(t_coder *coder0, t_coder *coder1);
+int		compare_edf(t_coder *coder0, t_coder *coder1);
 
 // Utility functions
 long	get_time(void);
 void	sim_print(t_coder *self, char *msg, int critical);
 int		check_sim_status(t_config *config);
-
 
 #endif

@@ -41,7 +41,7 @@ $(F_OBJ)/%.o: $(F_SRC)/%.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@rm	-r $(F_OBJ)
+	@rm	-rf $(F_OBJ)
 
 fclean: clean
 	@rm -f	$(NAME)

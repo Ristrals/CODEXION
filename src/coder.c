@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 13:39:54 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/13 18:14:34 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/15 09:48:32 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,4 +61,3 @@ static void	coder_compile(t_coder *self)
 	self->state = WORK;
 	pthread_mutex_unlock(&self->lock_state);
 }
-
