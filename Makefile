@@ -1,6 +1,8 @@
 CC = cc
 CFLAGS = -Wall -Wextra -Werror
+THREAD = -Wall -Wextra -Werror -fsanitize=thread -g
 VAL = valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all
+HEL = valgrind --tool=helgrind
 
 NAME = codexion
 F_SRC = src
@@ -26,6 +28,9 @@ all: $(NAME)
 
 val: $(NAME)
 	$(VAL) ./$(NAME) $(ARGS) $(EDF)
+
+hel: $(NAME)
+	$(HEL) ./$(NAME) $(ARGS) $(EDF)
 
 fifo:
 	./$(NAME) $(ARGS) $(FIFO)

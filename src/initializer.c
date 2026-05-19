@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/05 17:59:27 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 16:37:27 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/18 18:10:32 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ int	init_config(t_config *config, char *argv[])
 	pthread_mutex_init(&config->lock_sim_status, NULL);
 	pthread_mutex_init(&config->lock_write, NULL);
 	pthread_cond_init(&config->cond_room, NULL);
+	pthread_mutex_init(&config->lock_room, NULL);
 	if (init_arrays(config))
 		return (1);
 	return (0);

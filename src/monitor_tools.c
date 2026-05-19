@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/12 13:24:15 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/15 15:52:09 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/19 10:39:49 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,9 +14,9 @@
 
 int	check_deadlines(t_config *config)
 {
-	int		i;
-	long	current_time;
-	long	last_compile;
+	int			i;
+	long long	current_time;
+	long long	last_compile;
 
 	i = 0;
 	current_time = get_time();
@@ -61,38 +61,33 @@ int	check_compiles(t_config *config)
 	return (0);
 }
 
-int	compare_fifo(t_coder *coder0, t_coder *coder1)
+void	greenlight_coder(t_config *config, t_coder *coder,
+			int first, int second)
 {
-	long	time0;
-	long	time1;
-
-	pthread_mutex_lock(&coder0->lock_state);
-	time0 = coder0->req_time;
-	pthread_mutex_unlock(&coder0->lock_state);
-	pthread_mutex_lock(&coder1->lock_state);
-	time1 = coder1->req_time;
-	pthread_mutex_unlock(&coder1->lock_state);
-	if (time0 < time1)
-		return (1);
-	if (time0 == time1 && coder0->id < coder1->id)
-		return (1);
-	return (0);
+	pthread_mutex_lock(&config->lock_room);
+	pthread_mutex_lock(&coder->lock_state);
+	coder->state = COMP;
+	pthread_mutex_unlock(&coder->lock_state);
+	config->dongles[first].in_use = 1;
+	config->dongles[second].in_use = 1;
+	pthread_cond_broadcast(&config->cond_room);
+	pthread_mutex_unlock(&config->lock_room);
 }
 
-int	compare_edf(t_coder *coder0, t_coder *coder1)
+int	check_dongles(t_config *config, long long now, int first, int second)
 {
-	long	deadline0;
-	long	deadline1;
+	int	result;
 
-	pthread_mutex_lock(&coder0->lock_last_comp);
-	deadline0 = coder0->last_comp + coder0->config->tt_burnout;
-	pthread_mutex_unlock(&coder0->lock_last_comp);
-	pthread_mutex_lock(&coder1->lock_last_comp);
-	deadline1 = coder1->last_comp + coder1->config->tt_burnout;
-	pthread_mutex_unlock(&coder1->lock_last_comp);
-	if (deadline0 < deadline1)
-		return (1);
-	if (deadline0 == deadline1 && coder0->id < coder1->id)
-		return (1);
-	return (0);
+	result = 0;
+	pthread_mutex_lock(&config->dongles[first].dongle);
+	pthread_mutex_lock(&config->dongles[second].dongle);
+	if (!config->dongles[first].in_use && !config->dongles[second].in_use)
+	{
+		if ((now - config->dongles[first].last_used >= config->dgl_cd) && (now
+				- config->dongles[second].last_used >= config->dgl_cd))
+			result = 1;
+	}
+	pthread_mutex_unlock(&config->dongles[second].dongle);
+	pthread_mutex_unlock(&config->dongles[first].dongle);
+	return (result);
 }
