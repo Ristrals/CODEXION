@@ -6,7 +6,7 @@
 /*   By: kmalfois <kmalfois@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/06 14:20:52 by kmalfois          #+#    #+#             */
-/*   Updated: 2026/05/19 10:44:51 by kmalfois         ###   ########.fr       */
+/*   Updated: 2026/05/19 12:00:21 by kmalfois         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,7 +65,9 @@ int	compare_fifo(t_coder *coder0, t_coder *coder1)
 int	compare_edf(t_coder *coder0, t_coder *coder1)
 {
 	long long	deadline0;
+	long long	score0;
 	long long	deadline1;
+	long long	score1;
 
 	pthread_mutex_lock(&coder0->lock_last_comp);
 	deadline0 = coder0->last_comp + coder0->config->tt_burnout;
@@ -73,9 +75,11 @@ int	compare_edf(t_coder *coder0, t_coder *coder1)
 	pthread_mutex_lock(&coder1->lock_last_comp);
 	deadline1 = coder1->last_comp + coder1->config->tt_burnout;
 	pthread_mutex_unlock(&coder1->lock_last_comp);
-	if (deadline0 < deadline1)
+	score0 = deadline0 + (coder0->compiled * 10);
+	score1 = deadline1 + (coder1->compiled * 10);
+	if (score0 < score1)
 		return (1);
-	if (deadline0 == deadline1 && coder0->id < coder1->id)
+	if (score0 == score1 && coder0->id < coder1->id)
 		return (1);
 	return (0);
 }

@@ -326,6 +326,10 @@ The program will then perform a cleanup, destroying all mutexes and freeing allo
 
 ![Codexion logigram](assets/logigram.png)
 
+### FIFO vs EDF
+The fifo scheduler will roughly compare time requests to sort its priority.
+edf however, will not only sort deadlines, but weigh them, preventing greedy neighbors from hogging dongles for too long.
+
 ## CONCLUSION
 Playing with threads and understanding their inner workings was very interesting. \
 The challenge revolved around the way each thread would access key variables, both for reading, editing or waiting.
